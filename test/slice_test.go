@@ -8,7 +8,6 @@ package test
 import (
 	"fmt"
 	"github.com/xfali/reflection"
-	"reflect"
 	"testing"
 )
 
@@ -22,13 +21,13 @@ func TestCopySlice(t *testing.T) {
 	t.Run("not slice", func(t *testing.T) {
 		src := 0
 		dst := []int{0}
-		n, err := reflection.CopySlice(reflect.ValueOf(src), reflect.ValueOf(dst))
+		n, err := reflection.CopySliceInterface(&dst, src)
 		if err == nil {
 			t.Fatal("Must cannot copy!")
 		}
 		t.Log(n, " ", err)
 
-		n, err = reflection.CopySlice(reflect.ValueOf(dst), reflect.ValueOf(src))
+		n, err = reflection.CopySliceInterface(src, dst)
 		if err == nil {
 			t.Fatal("Must cannot copy!")
 		}
@@ -38,7 +37,7 @@ func TestCopySlice(t *testing.T) {
 	t.Run("slice int int", func(t *testing.T) {
 		src := []int{0, 1, 2}
 		var dst []int
-		n, err := reflection.CopySlice(reflect.ValueOf(&dst), reflect.ValueOf(src))
+		n, err := reflection.CopySliceInterface(&dst, src)
 		if err != nil {
 			t.Fatal("Must copy!", err)
 		}
@@ -56,7 +55,7 @@ func TestCopySlice(t *testing.T) {
 	t.Run("slice int int64", func(t *testing.T) {
 		src := []int{0, 1, 2}
 		var dst []int64
-		n, err := reflection.CopySlice(reflect.ValueOf(&dst), reflect.ValueOf(src))
+		n, err := reflection.CopySliceInterface(&dst, src)
 		if err != nil {
 			t.Fatal("Must copy!", err)
 		}
@@ -74,7 +73,7 @@ func TestCopySlice(t *testing.T) {
 	t.Run("slice testStr String", func(t *testing.T) {
 		src := []testStr{"hello", "world"}
 		var dst []fmt.Stringer
-		n, err := reflection.CopySlice(reflect.ValueOf(&dst), reflect.ValueOf(src))
+		n, err := reflection.CopySliceInterface(&dst, src)
 		if err != nil {
 			t.Fatal("Must copy!", err)
 		}

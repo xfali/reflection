@@ -10,13 +10,18 @@ import (
 	"reflect"
 )
 
+func CopySliceInterface(dest, src interface{}) (int, error) {
+	t := reflect.TypeOf(dest)
+	v := reflect.ValueOf(dest)
+	if t.Kind() != reflect.Ptr {
+		return 0, errors.New("Dest Type is not a ptr. " + t.String())
+	}
+
+	return CopySlice(v.Elem(), reflect.ValueOf(src))
+}
+
 func CopySlice(dest, src reflect.Value) (int, error) {
 	destType := dest.Type()
-	if destType.Kind() != reflect.Ptr {
-		return 0, errors.New("Dest Type is not a ptr. " + destType.String())
-	}
-	dest = dest.Elem()
-	destType = destType.Elem()
 	if destType.Kind() != reflect.Slice {
 		return 0, errors.New("Dest Type is not a slice ptr. " + destType.String())
 	}
