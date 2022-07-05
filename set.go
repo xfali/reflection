@@ -23,11 +23,9 @@ func SafeSetValue(f reflect.Value, v reflect.Value) bool {
 	return SetValue(f, v)
 }
 
-func SetValue(f reflect.Value, v reflect.Value) bool {
+func SetValue(f reflect.Value, vv reflect.Value) bool {
 	hasAssigned := false
-	rawValue := reflect.Indirect(v)
-	rawValueType := reflect.TypeOf(rawValue.Interface())
-	vv := reflect.ValueOf(rawValue.Interface())
+	rawValueType := vv.Type()
 
 	ft := f.Type()
 	switch ft.Kind() {
@@ -106,7 +104,7 @@ func SetValue(f reflect.Value, v reflect.Value) bool {
 		//    }
 		default:
 			hasAssigned = true
-			f.SetString(fmt.Sprintf("%v", v))
+			f.SetString(fmt.Sprintf("%v", vv.Interface()))
 		}
 		break
 	case reflect.Complex64, reflect.Complex128:
@@ -244,7 +242,7 @@ func SetValue(f reflect.Value, v reflect.Value) bool {
 				}
 			}
 		} else {
-			f.Set(reflect.ValueOf(v))
+			f.Set(vv)
 		}
 		break
 	case reflect.Interface:
