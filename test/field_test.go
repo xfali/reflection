@@ -21,10 +21,12 @@ type testRootStruct struct {
 }
 
 type testBranchStruct struct {
-	S  string         `json:"s"`
-	T  time.Time      `json:"t"`
-	B  bool           `json:"b"`
-	SS []fmt.Stringer `json:"ss"`
+	S    string                  `json:"s"`
+	T    time.Time               `json:"t"`
+	B    bool                    `json:"b"`
+	SS   []fmt.Stringer          `json:"ss"`
+	M    map[string]fmt.Stringer `json:"m"`
+	Chan <-chan time.Time        `json:"chan"`
 }
 
 func TestField(t *testing.T) {
@@ -129,6 +131,27 @@ func TestField(t *testing.T) {
 		if string(o.D) != "world" {
 			t.Fatal("expect world but get ", string(o.D))
 		}
+
+		err = reflection.SetStrcutFieldValue(&o, "C.M", map[string]testStr{"hello": "world"})
+		if err != nil {
+			t.Fatal("cannot be here.", err)
+		}
+		if o.C.M["hello"].String() != "world" {
+			t.Fatal("expect world but get ", string(o.D))
+		}
+		now := time.Now()
+		err = reflection.SetStrcutFieldValue(&o, "C.Chan", time.NewTimer(1 * time.Second).C)
+		if err != nil || o.C.Chan == nil {
+			t.Fatal("cannot be here.", err)
+		}
+
+		<-o.C.Chan
+		n := time.Since(now)
+		if n < 1*time.Second {
+			t.Fatal("expect 1 second but get ", n/time.Millisecond)
+		} else {
+			t.Logf("use time: %d ms\n", n/time.Millisecond)
+		}
 	})
 
 	t.Run("with tag", func(t *testing.T) {
@@ -222,6 +245,28 @@ func TestField(t *testing.T) {
 		}
 		if string(o.D) != "world" {
 			t.Fatal("expect world but get ", string(o.D))
+		}
+
+		err = reflection.SetStrcutFieldValueByTag(&o, "c.m", map[string]testStr{"hello": "world"}, "json")
+		if err != nil {
+			t.Fatal("cannot be here.", err)
+		}
+		if o.C.M["hello"].String() != "world" {
+			t.Fatal("expect world but get ", string(o.D))
+		}
+
+		now := time.Now()
+		err = reflection.SetStrcutFieldValueByTag(&o, "c.chan", time.NewTimer(1 * time.Second).C, "json")
+		if err != nil || o.C.Chan == nil {
+			t.Fatal("cannot be here.", err)
+		}
+
+		<-o.C.Chan
+		n := time.Since(now)
+		if n < 1*time.Second {
+			t.Fatal("expect 1 second but get ", n/time.Millisecond)
+		} else {
+			t.Logf("use time: %d ms\n", n/time.Millisecond)
 		}
 	})
 }

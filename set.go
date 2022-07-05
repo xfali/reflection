@@ -287,6 +287,17 @@ func SetValue(dst reflect.Value, value reflect.Value) bool {
 			}
 		}
 		break
+	case reflect.Chan:
+		if vt.Kind() == reflect.Chan {
+			if vt.AssignableTo(dt) {
+				hasAssigned = true
+				dst.Set(value)
+			} else if vt.ConvertibleTo(dt) {
+				hasAssigned = true
+				dst.Set(value.Convert(dt))
+			}
+		}
+		break
 	case reflect.Interface:
 		hasAssigned = true
 		dst.Set(value)

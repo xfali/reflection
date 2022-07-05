@@ -53,12 +53,12 @@ func SetOrCopyMap(dest, src reflect.Value, set bool) (int, error) {
 			ov := src.MapIndex(key)
 			ot := ov.Type()
 			if ot.AssignableTo(destElemType) {
-				dest.SetMapIndex(key, ov)
+				destTmp.SetMapIndex(key, ov)
 				n++
 				continue
 			}
 			if ot.ConvertibleTo(destElemType) {
-				dest.SetMapIndex(key, ov.Convert(destElemType))
+				destTmp.SetMapIndex(key, ov.Convert(destElemType))
 				n++
 				continue
 			}
