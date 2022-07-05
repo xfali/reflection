@@ -228,6 +228,12 @@ func SetValue(f reflect.Value, v reflect.Value) bool {
 
 				t := time.Unix(vv.Int(), 0)
 				f.Set(reflect.ValueOf(t).Convert(fieldType))
+			} else if rawValueType == StringType {
+				t, err := convert2Time([]byte(vv.String()), time.Local)
+				if err == nil {
+					hasAssigned = true
+					f.Set(reflect.ValueOf(t).Convert(fieldType))
+				}
 			} else {
 				if d, ok := vv.Interface().([]byte); ok {
 					t, err := convert2Time(d, time.Local)
