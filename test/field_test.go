@@ -17,6 +17,7 @@ type testRootStruct struct {
 	B testBranchStruct  `json:"b"`
 	C *testBranchStruct `json:"c"`
 	I fmt.Stringer      `json:"i"`
+	D []byte            `json:"d"`
 }
 
 type testBranchStruct struct {
@@ -112,6 +113,22 @@ func TestField(t *testing.T) {
 		if o.C.SS[1].String() != "world" {
 			t.Fatal("expect world but get ", o.C.SS[1].String())
 		}
+
+		err = reflection.SetStrcutFieldValue(&o, "D", []uint8("hello"))
+		if err != nil {
+			t.Fatal("cannot be here.", err)
+		}
+		if string(o.D) != "hello" {
+			t.Fatal("expect hello but get ", string(o.D))
+		}
+
+		err = reflection.SetStrcutFieldValue(&o, "D", "world")
+		if err != nil {
+			t.Fatal("cannot be here.", err)
+		}
+		if string(o.D) != "world" {
+			t.Fatal("expect world but get ", string(o.D))
+		}
 	})
 
 	t.Run("with tag", func(t *testing.T) {
@@ -189,6 +206,22 @@ func TestField(t *testing.T) {
 		}
 		if o.C.SS[1].String() != "world" {
 			t.Fatal("expect world but get ", o.C.SS[1].String())
+		}
+
+		err = reflection.SetStrcutFieldValueByTag(&o, "d", []uint8("hello"), "json")
+		if err != nil {
+			t.Fatal("cannot be here.", err)
+		}
+		if string(o.D) != "hello" {
+			t.Fatal("expect hello but get ", string(o.D))
+		}
+
+		err = reflection.SetStrcutFieldValueByTag(&o, "d", "world", "json")
+		if err != nil {
+			t.Fatal("cannot be here.", err)
+		}
+		if string(o.D) != "world" {
+			t.Fatal("expect world but get ", string(o.D))
 		}
 	})
 }

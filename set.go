@@ -21,7 +21,7 @@ func SetValueInterface(dst interface{}, v interface{}) error {
 		return errors.New("Dest must be Pointer. ")
 	}
 	f = f.Elem()
-	ok :=  SetValue(f, reflect.ValueOf(v))
+	ok := SetValue(f, reflect.ValueOf(v))
 	if !ok {
 		return errors.New("Not assigned. ")
 	}
@@ -63,14 +63,23 @@ func SetValue(dst reflect.Value, value reflect.Value) bool {
 			break
 		}
 		break
+	case reflect.Map:
+		switch vt.Kind() {
+		case reflect.Map:
+			_, err := SetOrCopyMap(dst, value, true)
+			hasAssigned = err == nil
+		}
+		break
 	case reflect.Slice:
 		switch vt.Kind() {
 		case reflect.String:
-			hasAssigned = true
-			dst.Set(value.Convert(dt))
+			if dt.Elem().Kind() == reflect.Uint8 {
+				hasAssigned = true
+				dst.SetBytes([]byte(value.String()))
+			}
 			break
 		case reflect.Slice:
-			_, err := CopySlice(dst, value)
+			_, err := SetOrCopySlice(dst, value, true)
 			hasAssigned = err == nil
 			break
 		}

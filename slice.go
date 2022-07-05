@@ -21,6 +21,10 @@ func CopySliceInterface(dest, src interface{}) (int, error) {
 }
 
 func CopySlice(dest, src reflect.Value) (int, error) {
+	return SetOrCopySlice(dest, src, false)
+}
+
+func SetOrCopySlice(dest, src reflect.Value, set bool) (int, error) {
 	destType := dest.Type()
 	if destType.Kind() != reflect.Slice {
 		return 0, errors.New("Dest Type is not a slice ptr. " + destType.String())
@@ -33,8 +37,18 @@ func CopySlice(dest, src reflect.Value) (int, error) {
 	srcElemType := srcType.Elem()
 
 	if destElemType.Kind() == srcElemType.Kind() {
-		dest.Set(src)
-		return dest.Len(), nil
+		if set {
+			dest.Set(src)
+			return dest.Len(), nil
+		} else {
+			destTmp := dest
+			if destTmp.IsNil() {
+				destTmp = reflect.MakeSlice(destType, src.Len(), src.Len())
+			}
+			_ = reflect.Copy(destTmp, src)
+			dest.Set(destTmp)
+			return dest.Len(), nil
+		}
 	} else {
 		n := 0
 		destTmp := dest
@@ -42,13 +56,15 @@ func CopySlice(dest, src reflect.Value) (int, error) {
 			ov := src.Index(i)
 			ot := ov.Type()
 			// interface
-			if ot.ConvertibleTo(destElemType) {
-				ov = ov.Convert(destElemType)
-				ot = ov.Type()
-			}
 			if ot.AssignableTo(destElemType) {
 				destTmp = reflect.Append(destTmp, ov)
 				n++
+				continue
+			}
+			if ot.ConvertibleTo(destElemType) {
+				destTmp = reflect.Append(destTmp, ov.Convert(destElemType))
+				n++
+				continue
 			}
 		}
 		dest.Set(destTmp)
