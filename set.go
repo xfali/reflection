@@ -15,121 +15,137 @@ import (
 	"time"
 )
 
-func SafeSetValue(f reflect.Value, v reflect.Value) bool {
+func SetValueInterface(dst interface{}, v interface{}) error {
+	f := reflect.ValueOf(dst)
 	if err := MustPtrValue(f); err != nil {
-		return false
+		return errors.New("Dest must be Pointer. ")
 	}
 	f = f.Elem()
-	return SetValue(f, v)
+	ok :=  SetValue(f, reflect.ValueOf(v))
+	if !ok {
+		return errors.New("Not assigned. ")
+	}
+	return nil
 }
 
-func SetValue(f reflect.Value, vv reflect.Value) bool {
+func SetValue(dst reflect.Value, value reflect.Value) bool {
 	hasAssigned := false
-	rawValueType := vv.Type()
+	vt := value.Type()
 
-	ft := f.Type()
-	switch ft.Kind() {
+	dt := dst.Type()
+	switch dt.Kind() {
 	case reflect.Bool:
-		switch rawValueType.Kind() {
+		switch vt.Kind() {
 		case reflect.Bool:
 			hasAssigned = true
-			f.SetBool(vv.Bool())
+			dst.SetBool(value.Bool())
 			break
 		case reflect.Slice:
-			if d, ok := vv.Interface().([]uint8); ok {
+			if d, ok := value.Interface().([]uint8); ok {
 				hasAssigned = true
-				f.SetBool(d[0] != 0)
+				dst.SetBool(d[0] != 0)
 			}
 			break
 		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 			hasAssigned = true
-			f.SetBool(vv.Uint() != 0)
+			dst.SetBool(value.Uint() != 0)
 			break
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			hasAssigned = true
-			f.SetBool(vv.Int() != 0)
+			dst.SetBool(value.Int() != 0)
 			break
 		case reflect.String:
-			b, err := strconv.ParseBool(vv.String())
+			b, err := strconv.ParseBool(value.String())
 			if err == nil {
 				hasAssigned = true
-				f.SetBool(b)
+				dst.SetBool(b)
 			}
 			break
 		}
 		break
-	case reflect.String:
-		switch rawValueType.Kind() {
+	case reflect.Slice:
+		switch vt.Kind() {
 		case reflect.String:
 			hasAssigned = true
-			f.SetString(vv.String())
+			dst.Set(value.Convert(dt))
 			break
 		case reflect.Slice:
-			if d, ok := vv.Interface().([]uint8); ok {
+			_, err := CopySlice(dst, value)
+			hasAssigned = err == nil
+			break
+		}
+	case reflect.String:
+		switch vt.Kind() {
+		case reflect.String:
+			hasAssigned = true
+			dst.SetString(value.String())
+			break
+		case reflect.Slice:
+			if d, ok := value.Interface().([]uint8); ok {
 				hasAssigned = true
-				f.SetString(string(d))
+				dst.SetString(string(d))
 			}
 			break
 		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 			hasAssigned = true
-			f.SetString(strconv.FormatUint(vv.Uint(), 10))
+			dst.SetString(strconv.FormatUint(value.Uint(), 10))
 			break
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			hasAssigned = true
-			f.SetString(strconv.FormatInt(vv.Int(), 10))
+			dst.SetString(strconv.FormatInt(value.Int(), 10))
 			break
 		case reflect.Float64:
 			hasAssigned = true
-			f.SetString(strconv.FormatFloat(vv.Float(), 'g', -1, 64))
+			dst.SetString(strconv.FormatFloat(value.Float(), 'g', -1, 64))
 			break
 		case reflect.Float32:
 			hasAssigned = true
-			f.SetString(strconv.FormatFloat(vv.Float(), 'g', -1, 32))
+			dst.SetString(strconv.FormatFloat(value.Float(), 'g', -1, 32))
 			break
 		case reflect.Bool:
 			hasAssigned = true
-			f.SetString(strconv.FormatBool(vv.Bool()))
+			dst.SetString(strconv.FormatBool(value.Bool()))
 			break
 		//case reflect.Struct:
 		//    if ti, ok := v.(time.Time); ok {
 		//        hasAssigned = true
 		//        if ti.IsZero() {
-		//            f.SetString("")
+		//            dst.SetString("")
 		//        } else {
-		//            f.SetString(ti.String())
+		//            dst.SetString(ti.String())
 		//        }
 		//    } else {
 		//        hasAssigned = true
-		//        f.SetString(fmt.Sprintf("%v", v))
+		//        dst.SetString(fmt.Sprintf("%v", v))
 		//    }
 		default:
 			hasAssigned = true
-			f.SetString(fmt.Sprintf("%v", vv.Interface()))
+			dst.SetString(fmt.Sprintf("%v", value.Interface()))
 		}
 		break
 	case reflect.Complex64, reflect.Complex128:
-		switch rawValueType.Kind() {
+		switch vt.Kind() {
 		case reflect.Complex64, reflect.Complex128:
 			hasAssigned = true
-			f.SetComplex(vv.Complex())
+			dst.SetComplex(value.Complex())
 			break
 		case reflect.Slice:
-			if rawValueType.ConvertibleTo(BytesType) {
-				d := vv.Bytes()
+			if vt.ConvertibleTo(BytesType) {
+				d := value.Bytes()
 				if len(d) > 0 {
-					if f.CanAddr() {
-						err := json.Unmarshal(d, f.Addr().Interface())
+					if dst.CanAddr() {
+						err := json.Unmarshal(d, dst.Addr().Interface())
 						if err != nil {
 							return false
 						}
 					} else {
-						x := reflect.New(ft)
+						x := reflect.New(dt)
 						err := json.Unmarshal(d, x.Interface())
 						if err != nil {
 							return false
 						}
 						hasAssigned = true
-						f.Set(x.Elem())
+						dst.Set(x.Elem())
 						break
 					}
 				}
@@ -138,116 +154,133 @@ func SetValue(f reflect.Value, vv reflect.Value) bool {
 		}
 		break
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch rawValueType.Kind() {
+		switch vt.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			hasAssigned = true
-			f.SetInt(vv.Int())
+			dst.SetInt(value.Int())
 			break
 		case reflect.Slice:
-			if d, ok := vv.Interface().([]uint8); ok {
+			if d, ok := value.Interface().([]uint8); ok {
 				intV, err := strconv.ParseInt(string(d), 10, 64)
 				if err == nil {
 					hasAssigned = true
-					f.SetInt(intV)
+					dst.SetInt(intV)
 				}
 			}
 			break
 		case reflect.String:
-			b, err := strconv.ParseInt(vv.String(), 10, 64)
+			b, err := strconv.ParseInt(value.String(), 10, 64)
 			if err == nil {
 				hasAssigned = true
-				f.SetInt(b)
+				dst.SetInt(b)
 			}
 			break
 		}
 		break
 	case reflect.Float32, reflect.Float64:
-		switch rawValueType.Kind() {
+		switch vt.Kind() {
 		case reflect.Float32, reflect.Float64:
 			hasAssigned = true
-			f.SetFloat(vv.Float())
+			dst.SetFloat(value.Float())
 			break
 		case reflect.Slice:
-			if d, ok := vv.Interface().([]uint8); ok {
+			if d, ok := value.Interface().([]uint8); ok {
 				floatV, err := strconv.ParseFloat(string(d), 64)
 				if err == nil {
 					hasAssigned = true
-					f.SetFloat(floatV)
+					dst.SetFloat(floatV)
 				}
 			}
 			break
 		case reflect.String:
-			b, err := strconv.ParseFloat(vv.String(), 10)
+			b, err := strconv.ParseFloat(value.String(), 10)
 			if err == nil {
 				hasAssigned = true
-				f.SetFloat(b)
+				dst.SetFloat(b)
 			}
 			break
 		}
 		break
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
-		switch rawValueType.Kind() {
+		switch vt.Kind() {
 		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 			hasAssigned = true
-			f.SetUint(vv.Uint())
+			dst.SetUint(value.Uint())
 			break
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			hasAssigned = true
-			f.SetUint(uint64(vv.Int()))
+			dst.SetUint(uint64(value.Int()))
 			break
 		case reflect.Slice:
-			if d, ok := vv.Interface().([]uint8); ok {
+			if d, ok := value.Interface().([]uint8); ok {
 				uintV, err := strconv.ParseUint(string(d), 10, 64)
 				if err == nil {
 					hasAssigned = true
-					f.SetUint(uintV)
+					dst.SetUint(uintV)
 				}
 			}
 			break
 		case reflect.String:
-			b, err := strconv.ParseUint(vv.String(), 10, 64)
+			b, err := strconv.ParseUint(value.String(), 10, 64)
 			if err == nil {
 				hasAssigned = true
-				f.SetUint(b)
+				dst.SetUint(b)
 			}
 			break
 		}
 		break
 	case reflect.Struct:
-		fieldType := f.Type()
+		fieldType := dst.Type()
 		if fieldType.ConvertibleTo(TimeType) {
-			if rawValueType == TimeType {
+			if vt == TimeType {
 				hasAssigned = true
-				t := vv.Convert(TimeType).Interface().(time.Time)
-				f.Set(reflect.ValueOf(t).Convert(fieldType))
-			} else if rawValueType == IntType || rawValueType == Int64Type ||
-				rawValueType == Int32Type {
+				t := value.Convert(TimeType).Interface().(time.Time)
+				dst.Set(reflect.ValueOf(t).Convert(fieldType))
+			} else if vt == IntType || vt == Int64Type ||
+				vt == Int32Type {
 				hasAssigned = true
 
-				t := time.Unix(vv.Int(), 0)
-				f.Set(reflect.ValueOf(t).Convert(fieldType))
-			} else if rawValueType == StringType {
-				t, err := convert2Time([]byte(vv.String()), time.Local)
+				t := time.Unix(value.Int(), 0)
+				dst.Set(reflect.ValueOf(t).Convert(fieldType))
+			} else if vt == StringType {
+				t, err := convert2Time([]byte(value.String()), time.Local)
 				if err == nil {
 					hasAssigned = true
-					f.Set(reflect.ValueOf(t).Convert(fieldType))
+					dst.Set(reflect.ValueOf(t).Convert(fieldType))
 				}
 			} else {
-				if d, ok := vv.Interface().([]byte); ok {
+				if d, ok := value.Interface().([]byte); ok {
 					t, err := convert2Time(d, time.Local)
 					if err == nil {
 						hasAssigned = true
-						f.Set(reflect.ValueOf(t).Convert(fieldType))
+						dst.Set(reflect.ValueOf(t).Convert(fieldType))
 					}
 				}
 			}
 		} else {
-			f.Set(vv)
+			if vt.AssignableTo(dt) {
+				hasAssigned = true
+				dst.Set(value)
+			} else if vt.ConvertibleTo(dt) {
+				hasAssigned = true
+				dst.Set(value.Convert(dt))
+			}
+		}
+		break
+	case reflect.Ptr:
+		if vt.Kind() == reflect.Ptr {
+			if vt.AssignableTo(dt) {
+				hasAssigned = true
+				dst.Set(value)
+			} else if vt.ConvertibleTo(dt) {
+				hasAssigned = true
+				dst.Set(value.Convert(dt))
+			}
 		}
 		break
 	case reflect.Interface:
 		hasAssigned = true
-		f.Set(vv)
+		dst.Set(value)
 		break
 	}
 

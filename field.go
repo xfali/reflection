@@ -55,6 +55,10 @@ func SetFieldValueEx(v reflect.Value, fieldName string, value reflect.Value, tag
 			f = modifier(f)
 		}
 		if tagName != "" {
+			if ft.Kind() == reflect.Ptr {
+				ft = ft.Elem()
+				fv = fv.Elem()
+			}
 			fs := fv.NumField()
 			found := false
 			for j := 0; j < fs; j++ {
@@ -63,10 +67,6 @@ func SetFieldValueEx(v reflect.Value, fieldName string, value reflect.Value, tag
 					if tag == f {
 						ft = ff.Type
 						fv = fv.Field(j)
-						if ft.Kind() == reflect.Ptr {
-							ft = ft.Elem()
-							fv = fv.Elem()
-						}
 
 						found = true
 						break
@@ -77,12 +77,12 @@ func SetFieldValueEx(v reflect.Value, fieldName string, value reflect.Value, tag
 				return fmt.Errorf("Field: %s at %d not found. ", f, i)
 			}
 		} else {
+			if fv.Kind() == reflect.Ptr {
+				fv = fv.Elem()
+			}
 			fv = fv.FieldByName(f)
 			if !fv.IsValid() {
 				return fmt.Errorf("Field: %s at %d not found. ", f, i)
-			}
-			if fv.Kind() == reflect.Ptr {
-				fv = fv.Elem()
 			}
 		}
 	}
