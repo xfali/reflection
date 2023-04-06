@@ -24,9 +24,9 @@ import (
 )
 
 type TestTable struct {
-	Id       int64  `column:"id"`
-	Username string `column:"username"`
-	Password string `column:"password"`
+	Id       int64  `alias:"id"`
+	Username string `alias:"username"`
+	Password string `alias:"password"`
 }
 
 func TestReflectObjectStruct(t *testing.T) {

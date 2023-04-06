@@ -22,10 +22,6 @@ import (
 )
 
 const (
-	ColumnName = "column"
-)
-
-const (
 	ObjectUnknown = iota
 	ObjectSimpletype
 	ObjectStruct
@@ -33,6 +29,10 @@ const (
 	ObjectMap
 
 	ObjectCustom = 50000
+)
+
+var (
+	StructAliasTag = "alias"
 )
 
 type Object interface {
@@ -472,7 +472,11 @@ func GetStructInfo(bean interface{}) (*StructInfo, error) {
 	return GetReflectStructInfo(reflect.TypeOf(bean), reflect.ValueOf(bean))
 }
 
-func GetReflectStructInfo(rt reflect.Type, rv reflect.Value) (*StructInfo, error) {
+func GetReflectStructInfo(rt reflect.Type, rv reflect.Value, aliasTag ...string) (*StructInfo, error) {
+	tag := StructAliasTag
+	if len(aliasTag) > 0 {
+		tag = aliasTag[0]
+	}
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.Elem()
 		if rv.IsValid() {
@@ -518,7 +522,7 @@ func GetReflectStructInfo(rt reflect.Type, rv reflect.Value) (*StructInfo, error
 		}
 
 		fieldName := rtf.Name
-		tagName := rtf.Tag.Get(ColumnName)
+		tagName := rtf.Tag.Get(tag)
 		if tagName == "-" {
 			continue
 		} else if tagName != "" {
