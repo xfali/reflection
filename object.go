@@ -1,7 +1,6 @@
 /*
- * Licensed to the AcmeStack under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for
- * additional information regarding copyright ownership.
+ * Copyright 2023 Xiongfa Li.
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,7 +42,7 @@ type Object interface {
 	// NewElem 获得对象的元素
 	NewElem() Object
 	// SetField 设置字段
-	SetField(name string, v interface{}) bool
+	SetField(name string, v reflect.Value) bool
 	// AddValue 添加元素值
 	AddValue(v reflect.Value) bool
 	// GetClassName 获得对象名称
@@ -173,13 +172,12 @@ func (structInfo *StructInfo) NewElem() Object {
 	return nil
 }
 
-func (structInfo *StructInfo) SetField(name string, v interface{}) bool {
+func (structInfo *StructInfo) SetField(name string, vv reflect.Value) bool {
 	fieldName := structInfo.FieldNameMap[name]
 	if fieldName != "" {
 		f := structInfo.Value.FieldByName(fieldName)
 		if f.IsValid() {
-			SetValue(f, ov)
-			return true
+			return SetValue(f, vv)
 		}
 	}
 	return false
@@ -218,8 +216,7 @@ func (sliceInfo *SliceInfo) NewElem() Object {
 	return sliceInfo.Elem.New()
 }
 
-func (sliceInfo *SliceInfo) SetField(name string, v interface{}) bool {
-	panic("slice not support SetField")
+func (sliceInfo *SliceInfo) SetField(name string, v reflect.Value) bool {
 	return false
 }
 
@@ -262,9 +259,8 @@ func (simpleTypeInfo *SimpleTypeInfo) NewElem() Object {
 	return nil
 }
 
-func (simpleTypeInfo *SimpleTypeInfo) SetField(name string, v interface{}) bool {
-	SetValue(simpleTypeInfo.Value, ov)
-	return true
+func (simpleTypeInfo *SimpleTypeInfo) SetField(name string, vv reflect.Value) bool {
+	return SetValue(simpleTypeInfo.Value, vv)
 }
 
 func (simpleTypeInfo *SimpleTypeInfo) AddValue(v reflect.Value) bool {
@@ -286,10 +282,7 @@ func (simpleTypeInfo *SimpleTypeInfo) SetValue(v reflect.Value) bool {
 		return true
 	}
 
-	if !SetValue(simpleTypeInfo.Value, v.Interface()) {
-		return false
-	}
-	return false
+	return SetValue(simpleTypeInfo.Value, v)
 }
 
 func (simpleTypeInfo *SimpleTypeInfo) Kind() int {
@@ -338,9 +331,9 @@ func (mapInfo *MapInfo) NewElem() Object {
 	return nil
 }
 
-func (mapInfo *MapInfo) SetField(name string, ov interface{}) bool {
+func (mapInfo *MapInfo) SetField(name string, vv reflect.Value) bool {
 	v := reflect.New(mapInfo.ElemType).Elem()
-	if SetValue(v, ov) {
+	if SetValue(v, vv) {
 		mapInfo.Value.SetMapIndex(reflect.ValueOf(name), v)
 		return true
 	}
