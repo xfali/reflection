@@ -125,3 +125,17 @@ var SqlType2GoType = map[string]reflect.Type{
 	"binary":             StringType,
 	"varbinary":          StringType,
 }
+
+// IsSimpleType 是否是数据库使用的简单类型，注意不能是PTR
+func IsSimpleType(t reflect.Type) bool {
+	switch t.Kind() {
+	case IntKind, Int8Kind, Int16Kind, Int32Kind, Int64Kind, UintKind, Uint8Kind, Uint16Kind, Uint32Kind, Uint64Kind,
+		Float32Kind, Float64Kind, Complex64Kind, Complex128Kind, StringKind, BoolKind, ByteKind /*, BytesKind, TimeKind*/ :
+		return true
+	}
+
+	if t.ConvertibleTo(BytesType) || t.ConvertibleTo(TimeType) {
+		return true
+	}
+	return false
+}
